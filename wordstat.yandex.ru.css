@@ -23,3 +23,7 @@
 .wordstat__content-preview-text_first {
 	display: none;
 }
+
+.save-button__wrapper {
+	align-items: center
+}
