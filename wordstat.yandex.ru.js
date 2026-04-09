@@ -8,7 +8,6 @@
         const wrap = document.querySelector('.save-button__wrapper');
         const btn = wrap?.querySelector('.save-button');
         if (!wrap || !btn || document.getElementById('ws-copy')) return false;
-
         createUI(wrap, btn);
         return true;
     }
@@ -32,30 +31,27 @@
     // 2. СОЗДАНИЕ ИНТЕРФЕЙСА (КНОПКИ + ФОРМЫ)
     // ==========================================
     function createUI(wrap, originalBtn) {
-        // КНОПКА "КОПИРОВАТЬ"
-        const copyBtn = originalBtn.cloneNode(true);
-        copyBtn.id = 'ws-copy';
-        copyBtn.style.marginRight = '6px';
-        copyBtn.innerHTML = '<span class="Button2-Text">Копировать</span>';
-        copyBtn.style.transition = 'none'; copyBtn.style.transform = 'none';
+        // Хелпер для создания кнопок БЕЗ наследования .save-button
+        const createBtn = (id, text) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            // Берём только визуальные классы, исключаем save-button
+            btn.className = 'Button2 Button2_view_action Button2_size_s';
+            btn.id = id;
+            btn.style.marginRight = '6px';
+            btn.innerHTML = `<span class="Button2-Text">${text}</span>`;
+            btn.style.transition = 'none';
+            btn.style.transform = 'none';
+            return btn;
+        };
 
-        // КНОПКА "СКАЧАТЬ" (строго изолирована)
-        const downloadBtn = copyBtn.cloneNode(true);
-        downloadBtn.id = 'ws-download-btn';
-        downloadBtn.innerHTML = '<span class="Button2-Text">Скачать</span>';
-
-        // КНОПКА "СТОП-СЛОВА"
-        const stopBtn = copyBtn.cloneNode(true);
-        stopBtn.id = 'ws-stop-btn';
-        stopBtn.innerHTML = '<span class="Button2-Text">Стоп-слова</span>';
-
-        // КНОПКА "СТАТИСТИКА"
-        const statsBtn = copyBtn.cloneNode(true);
-        statsBtn.id = 'ws-stats-btn';
-        statsBtn.innerHTML = '<span class="Button2-Text">Статистика</span>';
+        const copyBtn = createBtn('ws-copy', 'Копировать');
+        const downloadBtn = createBtn('ws-download-btn', 'Скачать');
+        const stopBtn = createBtn('ws-stop-btn', 'Стоп-слова');
+        const statsBtn = createBtn('ws-stats-btn', 'Статистика');
 
         // ==========================================
-        // ФОРМА СТОП-СЛОВ
+        // ФОРМА СТОП-СЛОВ (высота 400px)
         // ==========================================
         const stopForm = document.createElement('div');
         stopForm.id = 'ws-stop-form';
@@ -100,7 +96,6 @@
         `;
         document.body.appendChild(statsForm);
 
-        // Загрузка сохранённых слов
         document.getElementById('ws-stop-input').value = localStorage.getItem('ws_stop_words') || '';
 
         // ==========================================
@@ -114,12 +109,7 @@
             stopForm.style.display = 'none';
             showNotify(`Сохранено: ${words.length} слов`);
         };
-        
-        // Открытие/закрытие форм
-        stopBtn.addEventListener('click', e => { e.preventDefault(); stopForm.style.display = stopForm.style.display === 'flex' ? 'none' : 'flex'; });
         document.getElementById('ws-stats-close').onclick = () => statsForm.style.display = 'none';
-
-        // Кнопка копирования статистики (Формат: Фраза \t Частотность \n)
         document.getElementById('ws-stats-copy').onclick = async () => {
             const content = document.getElementById('ws-stats-content');
             const rows = content.querySelectorAll('div[style*="display:flex"]');
@@ -132,20 +122,17 @@
             showNotify('Статистика скопирована (TSV)');
         };
 
-        // Генерация статистики
+        stopBtn.addEventListener('click', e => { e.preventDefault(); stopForm.style.display = stopForm.style.display === 'flex' ? 'none' : 'flex'; });
         statsBtn.addEventListener('click', e => {
             e.preventDefault(); e.stopPropagation();
             const wrapper = document.querySelector('.table__wrapper');
             if (!wrapper) return showNotify('Таблица не найдена');
-
             const cells = Array.from(wrapper.querySelectorAll('tr td:first-child, [class*="row"] > *:first-child, tbody tr > *:first-child'));
             const rawPhrases = cells.map(c => c.textContent.trim()).filter(Boolean);
             const allWords = rawPhrases.flatMap(p => p.toLowerCase().split(/\s+/).filter(Boolean));
-
             const freq = {};
             allWords.forEach(w => freq[w] = (freq[w] || 0) + 1);
             const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-
             const content = document.getElementById('ws-stats-content');
             content.innerHTML = sorted.length
                 ? sorted.map(([word, count]) => `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #eee;"><span>${escapeHtml(word)}</span><strong>${count}</strong></div>`).join('')
@@ -155,8 +142,7 @@
 
         // Закрытие по Esc
         document.addEventListener('keydown', e => { if (e.key === 'Escape') { stopForm.style.display = 'none'; statsForm.style.display = 'none'; } });
-
-        // Закрытие при клике вне формы (исправлено мгновенное схлопывание)
+        // Закрытие по клику вне формы
         window.addEventListener('click', e => {
             if (stopForm.style.display === 'flex' && !stopForm.contains(e.target) && e.target !== stopBtn) stopForm.style.display = 'none';
             if (statsForm.style.display === 'flex' && !statsForm.contains(e.target) && e.target !== statsBtn) statsForm.style.display = 'none';
@@ -166,7 +152,7 @@
         // 3. ЛОГИКА КОПИРОВАНИЯ
         // ==========================================
         copyBtn.addEventListener('click', async (e) => {
-            e.preventDefault(); e.stopPropagation();
+            e.preventDefault(); e.stopImmediatePropagation();
             const textSpan = copyBtn.querySelector('.Button2-Text');
             const originalText = textSpan.textContent;
             try {
@@ -174,11 +160,9 @@
                 const stopWords = stopRaw.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
                 const wrapper = document.querySelector('.table__wrapper');
                 if (!wrapper) return showNotify('Таблица не найдена');
-
                 const cells = Array.from(wrapper.querySelectorAll('tr td:first-child, [class*="row"] > *:first-child, tbody tr > *:first-child'));
                 const rawItems = cells.map(c => c.textContent.trim()).filter(Boolean);
                 const filtered = stopWords.length > 0 ? rawItems.filter(t => !stopWords.some(sw => t.toLowerCase().includes(sw))) : rawItems;
-
                 if (document.querySelector('.wordstat__show-more-button')) showNotify('⚠️ Показаны не все запросы');
                 await navigator.clipboard.writeText(filtered.join('\n'));
                 textSpan.textContent = `✓ ${filtered.length}`;
@@ -190,43 +174,45 @@
         });
 
         // ==========================================
-        // 4. ЛОГИКА СКАЧИВАНИЯ (Исправлено)
+        // 4. ЛОГИКА СКАЧИВАНИЯ (ИСПРАВЛЕНО)
         // ==========================================
-        downloadBtn.addEventListener('click', async (e) => {
-            e.preventDefault(); e.stopPropagation();
+        downloadBtn.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopImmediatePropagation();
             const textSpan = downloadBtn.querySelector('.Button2-Text');
             textSpan.textContent = '⏳';
-            
-            const saveBtn = document.querySelector('.save-button');
-            if (!saveBtn) return showNotify('❌ Кнопка "Скачать" не найдена');
-            
-            saveBtn.click(); // Открываем меню
-            
+
+            // 1. Клик по иконке внутри оригинальной кнопки
+            const icon = document.querySelector('.save-button__icon');
+            if (!icon) {
+                showNotify('❌ Иконка скачивания не найдена');
+                textSpan.textContent = 'Скачать';
+                return;
+            }
+
+            console.log('[WS] Клик по .save-button__icon');
+            icon.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+
+            // 2. Ждём отрисовку меню и кликаем по .save-xlsx-button
             let attempts = 0;
             const checkXlsx = setInterval(() => {
                 attempts++;
-                // Ищем по нескольким возможным селекторам
-                const xlsxBtn = document.querySelector('.save-xlsx-button') || 
-                                document.querySelector('[class*="xlsx"]') || 
-                                document.querySelector('[data-type="xlsx"]');
-                                
+                const xlsxBtn = document.querySelector('.save-xlsx-button');
                 if (xlsxBtn) {
                     clearInterval(checkXlsx);
-                    console.log('[WS] ✅ Найдена кнопка XLSX:', xlsxBtn.className);
-                    xlsxBtn.click();
+                    console.log('[WS] ✅ .save-xlsx-button найдена');
+                    xlsxBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
                     textSpan.textContent = 'Скачать';
                     showNotify('Загрузка начата');
                 } else if (attempts >= 20) { // 1000мс
                     clearInterval(checkXlsx);
+                    console.warn('[WS] ❌ .save-xlsx-button не найдена');
                     textSpan.textContent = 'Скачать';
-                    console.warn('[WS] ❌ .save-xlsx-button не найдена. Доступные кнопки:');
-                    document.querySelectorAll('[class*="save"], [class*="download"], [class*="xlsx"]').forEach(b => console.log(' ', b.className, b.textContent.trim()));
-                    showNotify('⚠️ Меню не открылось. Кликните "Скачать" вручную.');
+                    showNotify('⚠️ Меню не открылось');
                 }
             }, 50);
         });
 
-        // Вставляем кнопки
+        // Вставляем кнопки слева от оригинальной
         wrap.insertBefore(statsBtn, originalBtn);
         wrap.insertBefore(stopBtn, originalBtn);
         wrap.insertBefore(downloadBtn, originalBtn);
