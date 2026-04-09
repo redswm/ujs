@@ -1,0 +1,25 @@
+//Делаем компактнее
+
+.main {
+	margin-top: 0px !important;
+	padding-top: 0 !important;
+}
+.wordstat,
+.table,
+.service-header__main
+{
+	margin-top: 0px !important;
+}
+.wordstat__search-wrapper {
+	margin: 0 !important;
+}
+.wordstat__view-types {
+	margin: 8px 0 !important;
+	font-size: 14px !important;
+}
+.wordstat__content-preview {
+	margin-bottom: 8px;
+}
+.wordstat__content-preview-text_first {
+	display: none;
+}
